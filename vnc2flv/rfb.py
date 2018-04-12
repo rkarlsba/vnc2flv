@@ -478,8 +478,23 @@ class RFBNetworkClient(RFBProxy):
 
     def open(self):
         RFBProxy.open(self)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((self.host, self.port))
+                
+        self.sock = None
+        for res in socket.getaddrinfo(self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            try:
+                self.sock = socket.socket(af, socktype, proto)
+            except socket.error, msg:
+                self.sock = None
+                continue
+            try:
+                self.sock.connect(sa)
+            except socket.error, msg:
+                self.sock.close()
+                self.sock = None
+                continue
+            break
+
         self.sock.settimeout(self.timeout*.001)
         if self.debug:
             print >>sys.stderr, 'Connected: %s:%d' % (self.host, self.port)
